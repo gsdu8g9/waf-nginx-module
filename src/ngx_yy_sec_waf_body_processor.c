@@ -17,13 +17,15 @@
 ** @return: NGX_OK or NGX_ERROR if failed.
 */
 
-static ngx_int_t
+ngx_int_t
 ngx_http_yy_sec_waf_process_spliturl(ngx_http_request_t *r,
-    ngx_str_t *str, ngx_http_request_ctx_t *ctx)
+    ngx_str_t *str, ngx_http_request_ctx_t *ctx, ngx_int_t flag)
 {
     u_char    *start, *buffer, *eq, *ev;
     ngx_uint_t len, arg_cnt, arg_len, nullbytes, buffer_size;
     ngx_str_t  value;
+
+    ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "[ysec_waf] data=%p", str->data);
 
     buffer = start = str->data;
     len =  str->len;
@@ -32,8 +34,9 @@ ngx_http_yy_sec_waf_process_spliturl(ngx_http_request_t *r,
     if (len != 0)
         arg_cnt = 1;
 
-    while ((len != 0) && *start) {
+    while ((start < str->data + len) && *start) {
         if (*start == '&') {
+            ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "[ysec_waf] start=%p, buffer=%p", start, buffer);
             buffer_size++;
             *buffer++ = '$';
             arg_cnt++;
@@ -41,8 +44,8 @@ ngx_http_yy_sec_waf_process_spliturl(ngx_http_request_t *r,
             continue;
         }
 
-        eq = (u_char*)ngx_strchr((char*)start, '=');
-        ev = (u_char*)ngx_strchr((char*)start, '&');
+        eq = (u_char*)ngx_strlchr((u_char*)start, (u_char*)str->data + len, '=');
+        ev = (u_char*)ngx_strlchr((u_char*)start, (u_char*)str->data + len, '&');
 
         if (eq) {
             if (!ev)
@@ -59,7 +62,11 @@ ngx_http_yy_sec_waf_process_spliturl(ngx_http_request_t *r,
             break;
         }
 
+        ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "[ysec_waf] value=%V, len=%d", &value, value.len);
+
         nullbytes = ngx_yy_sec_waf_unescape(&value);
+
+        ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "[ysec_waf] value=%V, nullbytes=%d", &value, nullbytes);
 
         if (nullbytes > 0) {
             ctx->process_body_error = 1;
@@ -75,6 +82,8 @@ ngx_http_yy_sec_waf_process_spliturl(ngx_http_request_t *r,
 
     str->len = buffer_size;
 
+    ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "[ysec_waf] str=%V", str);
+
     /* convert \r\n to blank as '  ' to improve the format of error log */
     buffer = str->data;
 
@@ -84,16 +93,19 @@ ngx_http_yy_sec_waf_process_spliturl(ngx_http_request_t *r,
         buffer++;
     }
 
-    ctx->post_args.len = str->len;
-    ctx->post_args.data = ngx_palloc(r->pool, str->len);
-    if (ctx->post_args.data == NULL) {
-        return NGX_ERROR;
+    if (flag == PROCESS_ARGS_POST) {
+
+        ctx->post_args.len = str->len;
+        ctx->post_args.data = ngx_palloc(r->pool, str->len);
+        if (ctx->post_args.data == NULL) {
+            return NGX_ERROR;
+        }
+    
+        ngx_memcpy(ctx->post_args.data, str->data, str->len);
+        ctx->post_args_count = arg_cnt;
+        ctx->post_args_len = str->len;
     }
-
-    ngx_memcpy(ctx->post_args.data, str->data, str->len);
-    ctx->post_args_count = arg_cnt;
-    ctx->post_args_len = str->len;
-
+	
     return NGX_OK;
 }
 
@@ -451,7 +463,7 @@ ngx_http_yy_sec_waf_process_body(ngx_http_request_t *r,
 
     if (r->request_body->temp_file) {
         ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "[ysec_waf] post body is stored in temp_file.");
-        return NGX_ERROR;
+        return NGX_OK;
     }
 
     full_body = ngx_palloc(r->pool, sizeof(ngx_str_t));
@@ -495,7 +507,7 @@ ngx_http_yy_sec_waf_process_body(ngx_http_request_t *r,
         /* X-WWW-FORM-URLENCODED */
         ctx->post_args_len = full_body->len;
 
-        ngx_http_yy_sec_waf_process_spliturl(r, full_body, ctx);
+        ngx_http_yy_sec_waf_process_spliturl(r, full_body, ctx, PROCESS_ARGS_POST);
     }
 
     return NGX_OK;

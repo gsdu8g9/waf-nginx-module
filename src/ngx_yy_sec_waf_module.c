@@ -280,7 +280,7 @@ ngx_http_yy_sec_waf_init(ngx_conf_t *cf)
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
-    h = ngx_array_push(&cmcf->phases[NGX_HTTP_PREACCESS_PHASE].handlers);
+    h = ngx_array_push(&cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers);
 
     if (h == NULL) {
         return NGX_ERROR;
@@ -457,7 +457,7 @@ ngx_http_yy_sec_waf_create_ctx(ngx_http_request_t *r,
 
     ngx_memcpy(ctx->args.data, r->args.data, ctx->args.len);
 
-    ngx_yy_sec_waf_unescape(&ctx->args);
+    ngx_http_yy_sec_waf_process_spliturl(r, &ctx->args, ctx, PROCESS_ARGS);
 
     ctx->process_body_error = 0;
 

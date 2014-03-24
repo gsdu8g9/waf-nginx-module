@@ -26,6 +26,9 @@ u_char *ngx_yy_sec_waf_uitoa(ngx_pool_t *p, ngx_uint_t n);
 #define RESPONSE_HEADER_PHASE   4
 #define RESPONSE_BODY_PHASE     8
 
+#define PROCESS_ARGS      1
+#define PROCESS_ARGS_POST 2
+
 extern ngx_module_t ngx_http_yy_sec_waf_module;
 
 extern ngx_atomic_t	  *request_matched;
@@ -127,6 +130,8 @@ ngx_shm_zone_t *ngx_http_yy_sec_waf_create_shm_zone(ngx_conf_t *cf);
 ngx_int_t ngx_http_yy_sec_waf_process_body(ngx_http_request_t *r,
     ngx_http_yy_sec_waf_loc_conf_t *cf, ngx_http_request_ctx_t *ctx);
 
+ngx_int_t ngx_http_yy_sec_waf_process_spliturl(ngx_http_request_t *r,
+    ngx_str_t *str, ngx_http_request_ctx_t *ctx, ngx_int_t flag);
 
 #endif
 
