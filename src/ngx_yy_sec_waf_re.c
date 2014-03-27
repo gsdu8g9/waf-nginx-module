@@ -215,6 +215,7 @@ yy_sec_waf_re_perform_interception(ngx_http_request_ctx_t *ctx)
         ngx_atomic_fetch_add(request_blocked, 1);
 
     if (ctx->action_level & ACTION_LOG) {
+		ngx_log_error(NGX_LOG_ERR, ctx->r->connection->log, 0, "str:%s, len:%d", ctx->server_ip->data, ctx->server_ip->len);
         ngx_log_error(NGX_LOG_ERR, ctx->r->connection->log, 0,
             "[ysec_waf] %s, id: %d, conn_per_ip: %ud,"
             " matched: %uA, blocked: %uA, allowed: %uA, alerted: %uA,"

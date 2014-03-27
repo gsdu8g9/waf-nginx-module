@@ -285,8 +285,8 @@ ngx_local_addr(const char *eth, ngx_str_t *s)
         if(AF_INET == ifap->ifa_addr->sa_family) {
             addr4 = (struct sockaddr_in *)ifap->ifa_addr;
 
-            if(s->len != ngx_inet_ntop(ifap->ifa_addr->sa_family,
-                (void *)&(addr4->sin_addr), s->data, s->len)) {
+            if((s->len = ngx_inet_ntop(ifap->ifa_addr->sa_family,
+                (void *)&(addr4->sin_addr), s->data, s->len)) != 0) {
 
                 freeifaddrs(ifap0);
                 return NGX_OK;
@@ -317,8 +317,8 @@ ngx_local_addr(const char *eth, ngx_str_t *s)
                 continue;
             }
 
-            if(s->len != ngx_inet_ntop(ifap->ifa_addr->sa_family,
-                (void *)&(addr6->sin6_addr), s->data, s->len)) {
+            if((s->len = ngx_inet_ntop(ifap->ifa_addr->sa_family,
+                (void *)&(addr6->sin6_addr), s->data, s->len)) != 0) {
 
                 freeifaddrs(ifap0);
                 return NGX_OK;
