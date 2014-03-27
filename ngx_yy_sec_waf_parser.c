@@ -11,6 +11,8 @@
 extern ngx_http_yy_sec_waf_rule_t *mod_rules[];
 extern ngx_uint_t mod_rules_num;
 
+extern ngx_int_t ngx_local_addr(const char *eth, ngx_str_t *s);
+
 typedef struct {
     char *type;
     void *(*parse)(ngx_conf_t *, ngx_str_t *, ngx_http_yy_sec_waf_rule_t *);
@@ -429,6 +431,19 @@ ngx_http_yy_sec_waf_read_conf(ngx_conf_t *cf,
             return NGX_CONF_ERROR;
         
         ngx_memcpy(rule_p, &rule, sizeof(ngx_http_yy_sec_waf_rule_t));
+    }
+
+	if (p->server_ip.len == 0) {
+        p->server_ip.len = NGX_SOCKADDR_STRLEN;
+        p->server_ip.data = ngx_pcalloc(cf->pool, NGX_SOCKADDR_STRLEN);
+        
+        if (p->server_ip.data == NULL) {
+            return NGX_CONF_ERROR;
+        }
+       
+        if (ngx_local_addr("eth0", &p->server_ip) != NGX_OK) {
+            return NGX_CONF_ERROR;
+        }
     }
 
     return NGX_CONF_OK;

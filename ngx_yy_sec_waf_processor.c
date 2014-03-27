@@ -264,8 +264,7 @@ ngx_http_yy_sec_waf_process_spliturl_rules(ngx_http_request_t *r,
         ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "[ysec_waf] value=%V, nullbytes=%d", &value, nullbytes);
 
         if (nullbytes > 0) {
-            ctx->process_body_error = 1;
-            ngx_str_set(&ctx->process_body_error_msg, "UNCOMMON_HEX_ENCODING");
+            yy_sec_waf_apply_mod_rule(r, NULL, uncommon_hex_encoding, ctx);
             return NGX_ERROR;
         }
 

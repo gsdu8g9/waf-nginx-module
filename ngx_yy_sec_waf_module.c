@@ -18,7 +18,6 @@ static void * ngx_http_yy_sec_waf_create_loc_conf(ngx_conf_t *cf);
 static char * ngx_http_yy_sec_waf_merge_loc_conf(ngx_conf_t *cf,
     void *parent, void *child);
 
-extern ngx_int_t ngx_local_addr(const char *eth, ngx_str_t *s);
 extern char * ngx_http_yy_sec_waf_read_du_loc_conf(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 extern char * ngx_http_yy_sec_waf_read_conf(ngx_conf_t *cf,
@@ -160,6 +159,8 @@ ngx_http_yy_sec_waf_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->args_rules = prev->args_rules;
     if (conf->denied_url == NULL)
         conf->denied_url = prev->denied_url;
+    if (conf->server_ip.len == 0)
+        conf->server_ip = prev->server_ip;
 
     ngx_conf_merge_value(conf->enabled, prev->enabled, 1);
 
@@ -287,21 +288,6 @@ ngx_http_yy_sec_waf_handler(ngx_http_request_t *r)
                 if (ctx->block)
                     cf->request_blocked++;
     
-                ngx_str_t  s;
-
-                s.len = NGX_SOCKADDR_STRLEN;
-                s.data = ngx_palloc(r->pool, NGX_SOCKADDR_STRLEN);
-                
-                if (s.data == NULL) {
-                    return NGX_ERROR;
-                }
-                
-                ngx_memzero(s.data, NGX_SOCKADDR_STRLEN);
-                
-                if (ngx_local_addr("eth0", &s) != NGX_OK) {
-                    return NGX_ERROR;
-                }
-
                 ngx_str_t *real_client_ip = &r->connection->addr_text;
 #ifdef NGX_HTTP_X_FORWARDED_FOR
                   
@@ -325,7 +311,7 @@ ngx_http_yy_sec_waf_handler(ngx_http_request_t *r)
                         " var: %V, client_ip: %V, server_ip: %V",
                         ctx->block? "block": "alert",
                         ctx->rule_id, cf->request_matched, cf->request_blocked, ctx->matched_string? ctx->matched_string: &empty,
-                        real_client_ip, &s );
+                        real_client_ip, &cf->server_ip );
                 }
 
                 if (ctx->log && !ctx->block)

@@ -65,6 +65,7 @@ typedef struct {
     ngx_array_t *args_rules;
     ngx_array_t *uri_rules; 
 
+    ngx_str_t  server_ip;
     ngx_str_t *denied_url;
     ngx_uint_t http_method;
     ngx_uint_t max_post_args_len;
