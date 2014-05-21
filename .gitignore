@@ -2,7 +2,6 @@
 *.git
 */servroot
 *core
-*conf
 
 3rdparty
 nginx*
