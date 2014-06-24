@@ -12,6 +12,10 @@ static yy_sec_waf_re_t *rule_engine;
 
 extern ngx_int_t ngx_local_addr(const char *eth, ngx_str_t *s);
 
+static ngx_int_t
+yy_sec_waf_re_process_block_list(ngx_http_request_t *r,
+    ngx_array_t *block_list, ngx_http_request_ctx_t *ctx);
+
 /*
 ** @description: This function is called to resolve tfns in hash.
 ** @para: ngx_str_t *action
@@ -185,6 +189,7 @@ yy_sec_waf_re_execute_operator(ngx_http_request_t *r,
         ctx->gids = rule->gids;
         ctx->msg = rule->msg;
         ctx->status = rule->status;
+        yy_sec_waf_re_process_block_list(r, ctx->cf->block_list, ctx);
         return RULE_MATCH;
     }
 
@@ -229,6 +234,55 @@ yy_sec_waf_re_perform_interception(ngx_http_request_ctx_t *ctx)
         return yy_sec_waf_output_forbidden_page(ctx->r, ctx);
 
     return NGX_DECLINED;
+}
+
+/*
+** @description: This function is called to process block list for yy sec waf.
+** @para: ngx_http_request_t *r
+** @para: ngx_http_yy_sec_waf_block_list_t *block_list
+** @para: ngx_http_request_ctx_t *ctx
+** @return: RULE_MATCH or RULE_NO_MATCH if failed.
+*/
+
+static ngx_int_t
+yy_sec_waf_re_process_block_list(ngx_http_request_t *r,
+    ngx_array_t *block_list, ngx_http_request_ctx_t *ctx)
+{
+    ngx_uint_t                        i;
+    ngx_int_t                         rc;
+    ngx_str_t                         str;
+    ngx_http_variable_value_t        *vv;
+    ngx_http_yy_sec_waf_block_list_t *block_list_p;
+
+	if (block_list == NULL || block_list->elts == NULL)
+		return NGX_ERROR;
+
+    block_list_p = (ngx_http_yy_sec_waf_block_list_t*)block_list->elts;
+    for (i = 0; i < block_list->nelts; ++i) {
+        vv = ngx_http_get_flushed_variable(r, block_list_p[i].idx);
+    
+        if (vv == NULL || vv->not_found || vv->len == 0) {
+            return NGX_AGAIN;
+        }
+    
+        str.len = vv->len;
+        str.data = vv->data;
+    
+        ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "[ysec_waf] str:%V", &str);
+    
+        if (block_list_p[i].regex != NULL) {
+            /* REGEX */
+            rc = ngx_http_regex_exec(r, block_list_p[i].regex, &str);
+        
+            if (rc == NGX_OK) {
+                ctx->action_level &= ~ACTION_ALLOW;
+                ctx->action_level |= ACTION_BLOCK;
+                return NGX_OK;
+            }
+        }
+    }
+
+    return NGX_ERROR;
 }
 
 /*
@@ -642,6 +696,69 @@ ngx_http_yy_sec_waf_re_read_conf(ngx_conf_t *cf,
             return NGX_CONF_ERROR;
         }
     }
+
+    return NGX_CONF_OK;
+}
+
+/*
+** @description: This function is called to read block list of yy sec waf.
+** @para: ngx_conf_t *cf
+** @para: ngx_command_t *cmd
+** @para: void *conf
+** @return: NGX_CONF_OK or NGX_CONF_ERROR if failed.
+*/
+
+char *
+ngx_http_yy_sec_waf_re_block_list(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf)
+{
+    ngx_http_yy_sec_waf_loc_conf_t  *p = conf;
+
+    ngx_str_t                        *value;
+    ngx_regex_compile_t              *rgc;
+    ngx_http_yy_sec_waf_block_list_t *block_list_p;
+
+    value = cf->args->elts;
+
+    /* variable */
+    if (value[1].data[0] != '$') {
+        return NGX_CONF_ERROR;
+    }
+
+    if (p->block_list == NULL) {
+        p->block_list = ngx_array_create(cf->pool, 1, sizeof(ngx_http_yy_sec_waf_block_list_t));
+        if (!p->block_list) {
+            return NGX_CONF_ERROR;
+        }
+    }
+
+	block_list_p = ngx_array_push(p->block_list);
+    if (block_list_p == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    value[1].data++;
+    value[1].len--;
+
+	block_list_p->idx = ngx_http_get_variable_index(cf, &value[1]);
+	if (block_list_p->idx == NGX_ERROR) {
+		return NGX_CONF_ERROR;
+	}
+
+    /* regex */
+    rgc = ngx_pcalloc(cf->pool, sizeof(ngx_regex_compile_t));
+    if (!rgc)
+        return NGX_CONF_ERROR;
+
+    rgc->options = PCRE_CASELESS|PCRE_MULTILINE;
+    rgc->pattern = value[2];
+    rgc->pool = cf->pool;
+    rgc->err.len = 0;
+    rgc->err.data = NULL;
+
+    block_list_p->regex = ngx_http_regex_compile(cf, rgc);
+    if (block_list_p->regex == NULL)
+        return NGX_CONF_ERROR;
 
     return NGX_CONF_OK;
 }

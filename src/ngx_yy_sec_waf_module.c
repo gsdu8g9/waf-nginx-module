@@ -23,6 +23,9 @@ extern char * ngx_http_yy_sec_waf_re_read_du_loc_conf(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 extern char * ngx_http_yy_sec_waf_re_read_conf(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
+extern char * ngx_http_yy_sec_waf_re_block_list(ngx_conf_t *cf,
+    ngx_command_t *cmd, void *conf);
+
 extern ngx_int_t ngx_http_yy_sec_waf_process_request(ngx_http_request_t *r,
     ngx_http_yy_sec_waf_loc_conf_t *cf, ngx_http_request_ctx_t *ctx);
 
@@ -69,6 +72,13 @@ static ngx_command_t  ngx_http_yy_sec_waf_commands[] = {
     { ngx_string("basic_rule"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_2MORE,
       ngx_http_yy_sec_waf_re_read_conf,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      0,
+      NULL },
+
+    { ngx_string("block_list"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_2MORE,
+      ngx_http_yy_sec_waf_re_block_list,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
@@ -161,6 +171,8 @@ ngx_http_yy_sec_waf_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->response_header_rules = prev->response_header_rules;
     if (conf->response_body_rules == NULL)
         conf->response_body_rules = prev->response_body_rules;
+    if (conf->block_list == NULL)
+        conf->block_list = prev->block_list;
     if (conf->denied_url == NULL)
         conf->denied_url = prev->denied_url;
     if (conf->shm_zone == NULL)

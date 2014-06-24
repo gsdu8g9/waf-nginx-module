@@ -16,6 +16,8 @@
 #include <ngx_event.h>
 #include <ngx_string.h>
 
+#include "ddebug.h"
+
 int ngx_yy_sec_waf_unescape(ngx_str_t *str);
 
 u_char *ngx_yy_sec_waf_itoa(ngx_pool_t *p, ngx_int_t n);
@@ -63,11 +65,17 @@ typedef struct ngx_http_yy_sec_waf_rule {
 } ngx_http_yy_sec_waf_rule_t;
 
 typedef struct {
+    ngx_http_regex_t *regex;
+    ngx_int_t         idx;
+} ngx_http_yy_sec_waf_block_list_t;
+
+typedef struct {
     /* ngx_http_yy_sec_waf_rule_t */
     ngx_array_t *request_header_rules;
     ngx_array_t *request_body_rules;
     ngx_array_t *response_header_rules;
     ngx_array_t *response_body_rules;
+    ngx_array_t *block_list;
 
     ngx_shm_zone_t *shm_zone;
     ngx_str_t  server_ip;
