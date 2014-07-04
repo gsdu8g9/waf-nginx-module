@@ -110,3 +110,13 @@ use URI::Escape;
 "POST /
 foo1=%3Cscript%3E&foo2=bar2"
 --- error_code: 412
+=== TEST 10: unlegal args
+--- config
+location / {
+    basic_rule ARGS str:script phase:2 id:1001 msg:test gids:XSS lev:LOG|BLOCK;
+    root $TEST_NGINX_SERVROOT/html/;
+    index index.html index.htm;
+}
+--- request
+GET /?for=bar&<script>&args=unlegal
+--- error_code: 200

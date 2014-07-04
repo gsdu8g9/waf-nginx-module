@@ -190,6 +190,7 @@ yy_sec_waf_re_execute_operator(ngx_http_request_t *r,
         ctx->msg = rule->msg;
         ctx->status = rule->status;
         yy_sec_waf_re_process_block_list(r, ctx->cf->block_list, ctx);
+
         return RULE_MATCH;
     }
 
@@ -226,7 +227,7 @@ yy_sec_waf_re_perform_interception(ngx_http_request_ctx_t *ctx)
             (ctx->action_level & ACTION_BLOCK)? "block":
             (ctx->action_level & ACTION_ALLOW)? "allow": "alert",
             ctx->rule_id,
-            ctx->process_body_error? &ctx->process_body_error_msg: &ctx->var,
+            ctx->raw_string,
             ctx->real_client_ip, ctx->server_ip);
     }
 

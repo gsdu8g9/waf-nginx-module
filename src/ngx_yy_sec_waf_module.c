@@ -460,17 +460,10 @@ ngx_http_yy_sec_waf_create_ctx(ngx_http_request_t *r,
         return NULL;
     }
 
-    ctx->args.len = r->args.len;
-    ctx->args.data = ngx_pcalloc(r->pool, r->args.len);
-    if (ctx->args.data == NULL) {
-        return NULL;
-    }
-
-    ngx_memcpy(ctx->args.data, r->args.data, ctx->args.len);
-
-    ngx_http_yy_sec_waf_process_spliturl(r, &ctx->args, ctx, PROCESS_ARGS);
+    ngx_http_yy_sec_waf_process_spliturl(r, &r->args, ctx, PROCESS_ARGS);
 
     ctx->process_body_error = 0;
+    ctx->raw_string = &ctx->var;
 
     if (r->method == NGX_HTTP_POST || r->method == NGX_HTTP_PUT) {
 

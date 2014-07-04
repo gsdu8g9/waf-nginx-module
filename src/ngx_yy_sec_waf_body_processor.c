@@ -8,6 +8,9 @@
 
 #include "ngx_yy_sec_waf.h"
 
+extern int
+ngx_yy_sec_waf_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type);
+
 /*
 ** @description: This function is called to process spliturl of the request.
 ** @para: ngx_http_request_t *r
@@ -21,91 +24,71 @@ ngx_int_t
 ngx_http_yy_sec_waf_process_spliturl(ngx_http_request_t *r,
     ngx_str_t *str, ngx_http_request_ctx_t *ctx, ngx_int_t flag)
 {
-    u_char    *start, *buffer, *eq, *ev;
-    ngx_uint_t len, arg_cnt, arg_len, nullbytes, buffer_size;
-    ngx_str_t  value;
+    u_char    *p, *q, *src, *dst, *buffer, *last;
+    ngx_uint_t arg_cnt, parsing_value, buffer_size;
 
-    ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "[ysec_waf] data=%p", str->data);
-
-    buffer = start = str->data;
-    len =  str->len;
-    buffer_size = arg_len = 0;
-
-    if (len != 0)
-        arg_cnt = 1;
-
-    while ((start < str->data + len) && *start) {
-        if (*start == '&') {
-            ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "[ysec_waf] start=%p, buffer=%p", start, buffer);
-            buffer_size++;
-            *buffer++ = '$';
-            arg_cnt++;
-            start++;
-            continue;
-        }
-
-        eq = (u_char*)ngx_strlchr((u_char*)start, (u_char*)str->data + len, '=');
-        ev = (u_char*)ngx_strlchr((u_char*)start, (u_char*)str->data + len, '&');
-
-        if (eq) {
-            if (!ev)
-                ev = str->data + str->len;
-            arg_len = ev - start;
-            eq = ngx_strlchr(start, start+arg_len, '=');
-            if (!eq)
-                return NGX_ERROR;
-
-            eq++;
-            value.data = eq;
-            value.len = ev - eq;
-        } else {
-            break;
-        }
-
-        ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "[ysec_waf] value=%V, len=%d", &value, value.len);
-
-        nullbytes = ngx_yy_sec_waf_unescape(&value);
-
-        ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "[ysec_waf] value=%V, nullbytes=%d", &value, nullbytes);
-
-        if (nullbytes > 0) {
-            ctx->process_body_error = 1;
-            ngx_str_set(&ctx->process_body_error_msg, "UNCOMMON_HEX_ENCODING");
-            return NGX_ERROR;
-        }
-
-        buffer = ngx_cpymem(buffer, value.data, value.len);
-        buffer_size += value.len;
-
-        start += arg_len;
+    p = buffer = ngx_palloc(r->pool, str->len);
+    if (p == NULL) {
+        return NGX_ERROR;
     }
 
-    str->len = buffer_size;
+    ngx_memcpy(p, str->data, str->len);
 
-    ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "[ysec_waf] str=%V", str);
+    last = p+str->len;
+    q = p;
 
-    /* convert \r\n to blank as '  ' to improve the format of error log */
-    buffer = str->data;
+    parsing_value = 0;
+    buffer_size = 0;
+    arg_cnt = 0;
 
-    while (buffer_size-- > 0) {
-        if (*buffer == '\n' || *buffer == '\r')
-            *buffer = ' ';
-        buffer++;
+    //Only parse value here.
+    while (p <= last) {
+        if (*p == '=' && !parsing_value) {
+
+            p++;
+            q = p;
+			parsing_value = 1;
+        } else if (*p == '&' || p == last) {
+
+            if (parsing_value) {
+                parsing_value = 0;
+            } else {
+                p++;
+                continue;
+            }
+
+            src = dst = q;
+            ngx_yy_sec_waf_unescape_uri(&dst, &src, p-q, 0);
+            ngx_memcpy(buffer+buffer_size, q, (dst-q));
+            buffer_size += dst-q;
+
+            if (p != last) {
+                ngx_memcpy(buffer+buffer_size, "$", 1);
+                buffer_size++;
+            }
+            
+            p++;
+            q = p;
+            arg_cnt++;
+        } else {
+
+            p++;
+        }
+    }
+
+    if (flag == PROCESS_ARGS) {
+        ctx->args.data = buffer;
+        ctx->args.len = buffer_size;
     }
 
     if (flag == PROCESS_ARGS_POST) {
 
-        ctx->post_args.len = str->len;
-        ctx->post_args.data = ngx_palloc(r->pool, str->len);
-        if (ctx->post_args.data == NULL) {
-            return NGX_ERROR;
-        }
-    
-        ngx_memcpy(ctx->post_args.data, str->data, str->len);
         ctx->post_args_count = arg_cnt;
-        ctx->post_args_len = str->len;
+        ctx->post_args_len = buffer_size;
+        ctx->post_args.data = buffer;
+        ctx->post_args.len = buffer_size;
     }
-	
+
     return NGX_OK;
 }
 
@@ -505,8 +488,20 @@ ngx_http_yy_sec_waf_process_body(ngx_http_request_t *r,
     } else if (!ngx_strncasecmp(r->headers_in.content_type->value.data,
         (u_char*)"application/x-www-form-urlencoded", ngx_strlen("application/x-www-form-urlencoded"))) {
         /* X-WWW-FORM-URLENCODED */
-        ctx->post_args_len = full_body->len;
+        ctx->full_body = full_body;
 
+        u_char *buf = full_body->data;
+        ngx_uint_t len = full_body->len;
+
+        // Convert \r \n into space.
+        while (len-- > 0) {
+            if (*buf == '\r' || *buf == '\n') {
+                *buf = ' ';
+            }
+
+            buf++;
+        }
+        
         ngx_http_yy_sec_waf_process_spliturl(r, full_body, ctx, PROCESS_ARGS_POST);
     }
 

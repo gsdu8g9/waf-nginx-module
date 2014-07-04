@@ -9,7 +9,7 @@
 #include "ngx_yy_sec_waf.h"
 #include <ifaddrs.h>
 
-static int
+int
 ngx_yy_sec_waf_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type);
 
 /* 
@@ -26,9 +26,9 @@ ngx_yy_sec_waf_unescape(ngx_str_t *str) {
     dst = str->data;
     src = str->data;
         
-    ngx_yy_sec_waf_unescape_uri(&src, &dst, str->len, 0);
+    ngx_yy_sec_waf_unescape_uri(&dst, &src, str->len, 0);
 
-    str->len = src - str->data;
+    str->len = dst - str->data;
 
     /* tmp hack fix, avoid %00 & co (null byte) encoding :p */
     for (i = 0; i < str->len; i++) {
@@ -52,7 +52,7 @@ ngx_yy_sec_waf_unescape(ngx_str_t *str) {
 ** @para: ngx_uint_t type
 ** @return: int
 */
-static int
+int
 ngx_yy_sec_waf_unescape_uri(u_char **dst, u_char **src, size_t size, ngx_uint_t type)
 {
     u_char  *d, *s, ch, c, decoded;

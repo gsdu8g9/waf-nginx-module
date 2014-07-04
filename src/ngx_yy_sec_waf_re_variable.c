@@ -53,6 +53,14 @@ yy_sec_waf_get_args(ngx_http_request_t *r,
         ngx_memcpy(p.data, ctx->post_args.data, ctx->post_args.len);
     }
 
+    if (r->method == NGX_HTTP_POST) {
+        
+        ctx->raw_string = ctx->full_body;
+    } else if (r->method == NGX_HTTP_GET) {
+    
+        ctx->raw_string = &r->args;
+    }
+
     v->valid = 1;
     v->no_cacheable = 0;
     v->escape = 0;

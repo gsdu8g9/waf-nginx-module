@@ -23,7 +23,7 @@ location / {
 GET /?t=foobar
 --- error_code: 500
 
-=== TEST 1: default status
+=== TEST 2: default status
 --- config
 location / {
     basic_rule ARGS regex:foobar phase:1 lev:LOG|BLOCK;

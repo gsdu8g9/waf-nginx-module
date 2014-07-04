@@ -128,7 +128,8 @@ typedef struct {
     ngx_int_t     rule_id;
     ngx_str_t    *gids;
     ngx_str_t    *msg;
-    ngx_str_t    *matched_string;
+    ngx_str_t    *raw_string;
+    ngx_str_t    *full_body;
 } ngx_http_request_ctx_t;
 
 ngx_int_t ngx_http_yy_sec_waf_process_conn(ngx_http_request_ctx_t *ctx);
