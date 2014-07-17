@@ -89,6 +89,14 @@ ngx_http_yy_sec_waf_process_spliturl(ngx_http_request_t *r,
         ctx->post_args.len = buffer_size;
     }
 
+    while (buffer_size-- > 0) {
+        if (*buffer == '\r' || *buffer == '\n' || *buffer == '\0') {
+            *buffer = ' ';
+        }
+
+        buffer++;
+    }
+
     return NGX_OK;
 }
 
