@@ -1,7 +1,7 @@
 NGINX_PATH=../nginx-1.2.3
 
 with-debug:
-		$(shell chmod +x ../3rdParty/*/configure ../../$(NGINX_PATH)/configure) \
+		$(shell chmod +x ../3rdParty/*/configure $(NGINX_PATH)/configure) \
 		cd $(NGINX_PATH) && ./configure --prefix=/usr/local/nginx \
 		--add-module=../ysec-waf-nginx-module \
 		--add-module=../3rdParty/nginx_upstream_hash \
@@ -11,7 +11,6 @@ with-debug:
 		--add-module=../3rdParty/memc-nginx-module \
 		--add-module=../3rdParty/srcache-nginx-module \
 		--add-module=../3rdParty/redis2-nginx-module \
-		--add-module=../3rdParty/lua-nginx-module \
 		--add-module=../3rdParty/ngx_http_redis \
 		--add-module=../3rdParty/nginx-http-concat \
 		--with-zlib=../3rdParty/zlib-1.2.8 \

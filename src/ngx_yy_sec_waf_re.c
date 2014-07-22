@@ -266,6 +266,10 @@ yy_sec_waf_re_process_block_list(ngx_http_request_t *r,
             return NGX_AGAIN;
         }
     
+        if (ctx->action_level & ACTION_ALLOW) {
+            continue;
+        }
+
         str.len = vv->len;
         str.data = vv->data;
     
@@ -278,6 +282,7 @@ yy_sec_waf_re_process_block_list(ngx_http_request_t *r,
             if (rc == NGX_OK) {
                 ctx->action_level &= ~ACTION_ALLOW;
                 ctx->action_level |= ACTION_BLOCK;
+                ctx->action_level |= ACTION_LOG;
                 return NGX_OK;
             }
         }
