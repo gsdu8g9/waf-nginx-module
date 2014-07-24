@@ -479,9 +479,14 @@ ngx_http_yy_sec_waf_create_ctx(ngx_http_request_t *r,
     ctx->server_ip = &cf->server_ip;
 
     ctx->real_client_ip = &ctx->r->connection->addr_text;
-	
-#ifdef NGX_HTTP_X_FORWARDED_FOR
 
+#ifdef NGX_HTTP_REALIP
+    if (ctx->r->headers_in.x_real_ip != NULL) {
+        ctx->real_client_ip = &ctx->r->headers_in.x_real_ip->value;
+    }
+#endif
+#ifdef NGX_HTTP_X_FORWARDED_FOR
+    else {
     #if (nginx_version < 1003014)
         if (ctx->r->headers_in.x_forwarded_for != NULL) {
             ctx->real_client_ip = &ctx->r->headers_in.x_forwarded_for->value;
@@ -492,6 +497,7 @@ ngx_http_yy_sec_waf_create_ctx(ngx_http_request_t *r,
             ctx->real_client_ip = &((ngx_table_elt_t**)(ctx->r->headers_in.x_forwarded_for.elts))[0]->value;
         }
     #endif
+    }
 #endif
 
     //yy_sec_waf_re_cache_init_rbtree(&ctx->cache_rbtree, &ctx->cache_sentinel);
