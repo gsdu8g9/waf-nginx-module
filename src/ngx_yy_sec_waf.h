@@ -31,6 +31,11 @@ u_char *ngx_yy_sec_waf_uitoa(ngx_pool_t *p, ngx_uint_t n);
 #define PROCESS_ARGS      1
 #define PROCESS_ARGS_POST 2
 
+#define ACTION_NONE    0
+#define ACTION_LOG     1
+#define ACTION_BLOCK   2
+#define ACTION_ALLOW   4
+
 extern ngx_module_t ngx_http_yy_sec_waf_module;
 
 extern ngx_atomic_t	  *request_matched;

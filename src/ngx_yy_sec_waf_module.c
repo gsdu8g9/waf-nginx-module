@@ -397,7 +397,9 @@ ngx_http_yy_sec_waf_handler(ngx_http_request_t *r)
 
         //Temply hack here, should hook the input filters.
         rc = yy_sec_waf_re_process_normal_rules(r, cf, ctx, REQUEST_HEADER_PHASE);
-        if (rc != NGX_DECLINED) {
+        if (rc != NGX_DECLINED 
+            || ctx->action_level & ACTION_ALLOW
+            || ctx->action_level & ACTION_BLOCK) {
             return rc;
         }
 
