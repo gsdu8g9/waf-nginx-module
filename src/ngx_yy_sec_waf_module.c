@@ -486,19 +486,30 @@ ngx_http_yy_sec_waf_create_ctx(ngx_http_request_t *r,
     if (ctx->r->headers_in.x_real_ip != NULL) {
         ctx->real_client_ip = &ctx->r->headers_in.x_real_ip->value;
     }
+
 #endif
 #ifdef NGX_HTTP_X_FORWARDED_FOR
     else {
+        ngx_str_t *s = NULL;
     #if (nginx_version < 1003014)
         if (ctx->r->headers_in.x_forwarded_for != NULL) {
-            ctx->real_client_ip = &ctx->r->headers_in.x_forwarded_for->value;
+            s = &ctx->r->headers_in.x_forwarded_for->value;
         }
     #else
-        
         if (ctx->r->headers_in.x_forwarded_for.nelts != 0) {
-            ctx->real_client_ip = &((ngx_table_elt_t**)(ctx->r->headers_in.x_forwarded_for.elts))[0]->value;
+            s = &((ngx_table_elt_t**)(ctx->r->headers_in.x_forwarded_for.elts))[0]->value;
         }
     #endif
+
+        ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                       "[ysec_waf] %V", s);
+
+        u_char *p = ngx_strlchr(s->data, s->data+s->len, ',');
+        if (p != NULL) {
+            s->len = p-s->data;
+        }
+
+        ctx->real_client_ip = s;
     }
 #endif
 
