@@ -511,6 +511,8 @@ ngx_http_yy_sec_waf_create_ctx(ngx_http_request_t *r,
         s->len = p-s->data;
     }
 
+    ctx->real_client_ip = s;
+
     in_addr_t addr = ngx_inet_addr(s->data, s->len);
     if (addr == INADDR_NONE) {
         ctx->real_client_ip = &ctx->r->connection->addr_text;
