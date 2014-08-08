@@ -207,6 +207,13 @@ static ngx_int_t
 yy_sec_waf_re_perform_interception(ngx_http_request_ctx_t *ctx)
 {
 
+    if (ctx == NULL 
+        || ctx->raw_string == NULL
+        || ctx->real_client_ip == NULL
+        || ctx->server_ip == NULL) {
+        return NGX_DECLINED;
+    }
+
     ngx_atomic_fetch_add(request_matched, 1);
 
     ctx->process_done = 1;
@@ -222,20 +229,20 @@ yy_sec_waf_re_perform_interception(ngx_http_request_ctx_t *ctx)
 
     size_t  len = ctx->raw_string->len;
     u_char *p = ctx->raw_string->data;
+
     if (len > NGX_MAX_ERROR_STR - 300) {
         len = NGX_MAX_ERROR_STR - 300;
         p[len++] = '.'; p[len++] = '.'; p[len++] = '.';
-        ctx->raw_string->len = len;
     }
 
     if (ctx->action_level & ACTION_LOG) {
         ngx_log_error(NGX_LOG_ERR, ctx->r->connection->log, 0,
             "[ysec_waf] %s, id: %d,"
-            " var: %V, client_ip: %V, server_ip: %V",
+            " var: %*s, client_ip: %V, server_ip: %V",
             (ctx->action_level & ACTION_BLOCK)? "block":
             (ctx->action_level & ACTION_ALLOW)? "allow": "alert",
             ctx->rule_id,
-            ctx->raw_string,
+            len, p,
             ctx->real_client_ip, ctx->server_ip);
     }
 
