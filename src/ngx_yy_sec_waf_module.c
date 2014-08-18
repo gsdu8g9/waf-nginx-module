@@ -84,7 +84,7 @@ static ngx_command_t  ngx_http_yy_sec_waf_commands[] = {
       NULL },
 
     { ngx_string("denied_url"),
-      NGX_HTTP_LOC_CONF|NGX_HTTP_LMT_CONF|NGX_CONF_TAKE1,
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LMT_CONF|NGX_CONF_TAKE1,
       ngx_http_yy_sec_waf_re_read_du_loc_conf,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
@@ -344,6 +344,11 @@ ngx_http_yy_sec_waf_handler(ngx_http_request_t *r)
         if (ctx->waiting_more_body) {
             return NGX_DONE;
         }
+    }
+
+    if (r->internal) {
+        ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "[ysec_waf] bypass internal request.");
+        return NGX_DECLINED;
     }
 
     if (!cf->enabled) {
