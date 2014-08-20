@@ -10,6 +10,8 @@
 
 static yy_sec_waf_re_t *rule_engine;
 
+static ngx_str_t yy_sec_waf_content_type = ngx_string("text/html");
+
 extern ngx_int_t ngx_local_addr(const char *eth, ngx_str_t *s);
 
 static ngx_int_t
@@ -102,62 +104,24 @@ static ngx_int_t
 yy_sec_waf_output_forbidden_page(ngx_http_request_t *r,
     ngx_http_request_ctx_t *ctx)
 {
-    ngx_str_t                       empty = ngx_string("");
-    ngx_str_t                      *tmp_uri;
     ngx_http_yy_sec_waf_loc_conf_t *cf;
+    ngx_http_complex_value_t        cv;
+    int                             status;
 
     cf = ngx_http_get_module_loc_conf(r, ngx_http_yy_sec_waf_module);
 
-    if (cf->denied_url) {
-        tmp_uri = ngx_pcalloc(r->pool, sizeof(ngx_str_t));
-        if (!tmp_uri)
-            return NGX_ERROR;
-        
-        tmp_uri->len = r->uri.len + (2 * ngx_escape_uri(NULL, r->uri.data, r->uri.len,
-            NGX_ESCAPE_ARGS));
-        tmp_uri->data = ngx_pcalloc(r->pool, tmp_uri->len+1);
-    
-        ngx_escape_uri(tmp_uri->data, r->uri.data, r->uri.len, NGX_ESCAPE_ARGS);
-        
-        ngx_table_elt_t *h;
-        
-        if (r->headers_in.headers.last)	{
-            h = ngx_list_push(&(r->headers_in.headers));
-            h->key.len = ngx_strlen("orig_url");
-            h->key.data = ngx_pcalloc(r->pool, ngx_strlen("orig_url")+1);
-            ngx_memcpy(h->key.data, "orig_url", ngx_strlen("orig_url"));
-            h->lowcase_key = ngx_pcalloc(r->pool, ngx_strlen("orig_url") + 1);
-            ngx_memcpy(h->lowcase_key, "orig_url", ngx_strlen("orig_url"));
-            h->value.len = tmp_uri->len;
-            h->value.data = ngx_pcalloc(r->pool, tmp_uri->len+1);
-            ngx_memcpy(h->value.data, tmp_uri->data, tmp_uri->len);
-            
-            h = ngx_list_push(&(r->headers_in.headers));
-            h->key.len = ngx_strlen("orig_args");
-            h->key.data = ngx_pcalloc(r->pool, ngx_strlen("orig_args")+1);
-            ngx_memcpy(h->key.data, "orig_args", ngx_strlen("orig_args"));
-            h->lowcase_key = ngx_pcalloc(r->pool, ngx_strlen("orig_args") + 1);
-            ngx_memcpy(h->lowcase_key, "orig_args", ngx_strlen("orig_args"));
-            h->value.len = r->args.len;
-            h->value.data = ngx_pcalloc(r->pool, r->args.len+1);
-            ngx_memcpy(h->value.data, r->args.data, r->args.len);
-            
-            h = ngx_list_push(&(r->headers_in.headers));
-            h->key.len = ngx_strlen("yy_sec_waf");
-            h->key.data = ngx_pcalloc(r->pool, ngx_strlen("yy_sec_waf")+1);
-            ngx_memcpy(h->key.data, "yy_sec_waf", ngx_strlen("yy_sec_waf"));
-            h->lowcase_key = ngx_pcalloc(r->pool, ngx_strlen("yy_sec_waf") + 1);
-            ngx_memcpy(h->lowcase_key, "yy_sec_waf", ngx_strlen("yy_sec_waf"));
-            h->value.len = empty.len;
-            h->value.data = empty.data;
-        }
+    status = ctx->status? ctx->status: NGX_HTTP_PRECONDITION_FAILED;
 
-        ngx_http_internal_redirect(r, cf->denied_url, &empty);
+    if (cf->denied_url.len != 0) {
 
-        return NGX_HTTP_OK;
-    } else {
-        return ctx->status? ctx->status: NGX_HTTP_PRECONDITION_FAILED;
+        ngx_memzero(&cv, sizeof(ngx_http_complex_value_t));
+
+        cv.value = cf->denied_url;
+
+        return ngx_http_send_response(r, status, &yy_sec_waf_content_type, &cv);
     }
+
+    return status;
 }
 
 /*
@@ -793,26 +757,68 @@ ngx_http_yy_sec_waf_re_block_list(ngx_conf_t *cf,
 */
 
 char *
-ngx_http_yy_sec_waf_re_read_du_loc_conf(ngx_conf_t *cf,
+ngx_http_yy_sec_waf_re_read_denied_url_conf(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf)
 {
     ngx_http_yy_sec_waf_loc_conf_t *p = conf;
-    ngx_str_t *value;
+    ngx_str_t                      *value;
+    ngx_int_t                       n;
+    size_t                          size;
+    ngx_file_t                      file;
+    ngx_file_info_t                 fi;
+    u_char                         *base;
 
     value = cf->args->elts;
     if (value[1].len == 0)
         return NGX_CONF_ERROR;
 
-    p->denied_url = ngx_pcalloc(cf->pool, sizeof(ngx_str_t));
-    if (!p->denied_url)
-        return NGX_CONF_ERROR;
+    if (p->denied_url.len != 0) {
+        return NGX_CONF_OK;
+    }
 
-    p->denied_url->data = ngx_pcalloc(cf->pool, value[1].len+1);
-    if (!p->denied_url->data)
-        return NGX_CONF_ERROR;
+    file.name = value[1];
 
-    ngx_memcpy(p->denied_url->data, value[1].data, value[1].len);
-    p->denied_url->len = value[1].len;
+    file.fd = ngx_open_file(file.name.data, NGX_FILE_RDONLY,
+                            NGX_FILE_OPEN, NGX_FILE_DEFAULT_ACCESS);
+
+    if (file.fd == NGX_INVALID_FILE) {
+        ngx_conf_log_error(NGX_LOG_ERR, cf, ngx_errno,
+                      ngx_open_file_n " \"%s\" failed", file.name.data);
+        return NGX_CONF_ERROR;
+    }
+
+    if (ngx_fd_info(file.fd, &fi) == NGX_FILE_ERROR) {
+        ngx_conf_log_error(NGX_LOG_CRIT, cf, ngx_errno,
+                           ngx_fd_info_n " \"%s\" failed", file.name.data);
+        return NGX_CONF_ERROR;
+    }
+
+    size = (size_t) ngx_file_size(&fi);
+
+    if (ngx_file_info(file.name.data, &fi) == NGX_FILE_ERROR) {
+        ngx_conf_log_error(NGX_LOG_CRIT, cf, ngx_errno,
+                           ngx_file_info_n " \"%s\" failed", file.name.data);
+        return NGX_CONF_ERROR;
+    }
+
+    base = ngx_pcalloc(cf->pool, size);
+    if (base == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    n = ngx_read_file(&file, base, size, 0);
+
+    if (ngx_close_file(file.fd) == NGX_FILE_ERROR) {
+        ngx_conf_log_error(NGX_LOG_ALERT, cf, ngx_errno,
+                      ngx_close_file_n " \"%s\" failed", file.name.data);
+    }
+
+    if (n == NGX_ERROR) {
+        return NGX_CONF_ERROR;
+    }
+
+    p->denied_url.data = base;
+    p->denied_url.len = size;
 
     return NGX_CONF_OK;
 }

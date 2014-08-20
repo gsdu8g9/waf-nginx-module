@@ -19,7 +19,7 @@ static char * ngx_http_yy_sec_waf_merge_loc_conf(ngx_conf_t *cf,
 static ngx_http_request_ctx_t* ngx_http_yy_sec_waf_create_ctx(ngx_http_request_t *r,
     ngx_http_yy_sec_waf_loc_conf_t *cf);
 
-extern char * ngx_http_yy_sec_waf_re_read_du_loc_conf(ngx_conf_t *cf,
+extern char * ngx_http_yy_sec_waf_re_read_denied_url_conf(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
 extern char * ngx_http_yy_sec_waf_re_read_conf(ngx_conf_t *cf,
     ngx_command_t *cmd, void *conf);
@@ -85,7 +85,7 @@ static ngx_command_t  ngx_http_yy_sec_waf_commands[] = {
 
     { ngx_string("denied_url"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_HTTP_LMT_CONF|NGX_CONF_TAKE1,
-      ngx_http_yy_sec_waf_re_read_du_loc_conf,
+      ngx_http_yy_sec_waf_re_read_denied_url_conf,
       NGX_HTTP_LOC_CONF_OFFSET,
       0,
       NULL },
@@ -173,12 +173,12 @@ ngx_http_yy_sec_waf_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
         conf->response_body_rules = prev->response_body_rules;
     if (conf->block_list == NULL)
         conf->block_list = prev->block_list;
-    if (conf->denied_url == NULL)
-        conf->denied_url = prev->denied_url;
     if (conf->shm_zone == NULL)
         conf->shm_zone = prev->shm_zone;
     if (conf->server_ip.len == 0)
         conf->server_ip = prev->server_ip;
+    if (conf->denied_url.len == 0)
+        conf->denied_url = prev->denied_url;
 
     ngx_conf_merge_value(conf->enabled, prev->enabled, 1);
 
