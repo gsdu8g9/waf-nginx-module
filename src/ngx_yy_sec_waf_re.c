@@ -118,7 +118,13 @@ yy_sec_waf_output_forbidden_page(ngx_http_request_t *r,
 
         cv.value = cf->denied_url;
 
-        return ngx_http_send_response(r, status, &yy_sec_waf_content_type, &cv);
+        ngx_http_send_response(r, status, &yy_sec_waf_content_type, &cv);
+
+        /* we have to finalize the request by ourselves,
+               * that is because we use the "read client body" API */
+        ngx_http_finalize_request(r, status);
+
+        return status;
     }
 
     return status;
