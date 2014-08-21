@@ -783,7 +783,7 @@ ngx_http_yy_sec_waf_re_read_denied_url_conf(ngx_conf_t *cf,
     }
 
     file.name = value[1];
-
+    file.log = cf->log;
     file.fd = ngx_open_file(file.name.data, NGX_FILE_RDONLY,
                             NGX_FILE_OPEN, NGX_FILE_DEFAULT_ACCESS);
 

@@ -1,4 +1,4 @@
-NGINX_PATH=../nginx-1.2.3
+NGINX_PATH=../nginx-1.4.7
 
 with-debug:
 		$(shell chmod +x ../3rdParty/*/configure $(NGINX_PATH)/configure) \
