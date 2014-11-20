@@ -122,7 +122,7 @@ yy_sec_waf_output_forbidden_page(ngx_http_request_t *r,
 
         /* we have to finalize the request by ourselves,
                * that is because we use the "read client body" API */
-        ngx_http_finalize_request(r, status);
+        //ngx_http_finalize_request(r, status);
 
         return status;
     }
