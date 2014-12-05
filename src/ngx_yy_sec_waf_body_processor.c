@@ -1,11 +1,3 @@
-/*
-** @file: ngx_yy_sec_waf_body_processor.c
-** @description: This is the body processor for yy sec waf.
-** @author: dw_liqi1<liqi1@yy.com>
-** @date: 2013.07.17
-** Copyright (C) YY, Inc.
-*/
-
 #include "ngx_yy_sec_waf.h"
 
 extern int

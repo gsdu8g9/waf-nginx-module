@@ -1,11 +1,3 @@
-/*
-** @file: ngx_yy_sec_waf_re_variable.c
-** @description: This is the rule engine's variables for yy sec waf.
-** @author: dw_liqi1<liqi1@yy.com>
-** @date: 2013.11.08
-** Copyright (C) YY, Inc.
-*/
-
 #include "ngx_yy_sec_waf_re.h"
 
 /*

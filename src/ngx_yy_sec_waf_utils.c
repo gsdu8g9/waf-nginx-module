@@ -1,11 +1,3 @@
-/*
-** @file: ngx_yy_sec_waf_utils.c
-** @description: This is the utils defined for yy sec waf.
-** @author: dw_liqi1<liqi1@yy.com>
-** @date: 2013.07.10
-** Copyright (C) YY, Inc.
-*/
-
 #include "ngx_yy_sec_waf.h"
 #include <ifaddrs.h>
 

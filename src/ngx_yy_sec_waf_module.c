@@ -1,11 +1,3 @@
-/*
-** @file: ngx_yy_sec_waf_module.c
-** @description: This is the core module for yy sec waf.
-** @author: dw_liqi1<liqi1@yy.com>
-** @date: 2013.07.10
-** Copyright (C) YY, Inc.
-*/
-
 #include "ngx_yy_sec_waf.h"
 
 static ngx_int_t ngx_http_yy_sec_waf_preconfiguration(ngx_conf_t *cf);
