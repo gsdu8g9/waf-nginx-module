@@ -1,5 +1,6 @@
 Introduction
 =============
+![](https://travis-ci.org/hnlq715/waf-nginx-module.svg)
 
 This software is open source, works as a WAF module in Nginx web server, and it provides 
 a lightweight and restful framework for us to look into the content of requests from clients.
